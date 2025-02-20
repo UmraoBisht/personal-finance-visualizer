@@ -63,10 +63,10 @@ A web application for tracking personal finances. Manage your transactions, view
    ```
 
 **Running the Project**
-    Start the development server:
-    
-    ```bash
-        npm run dev
-    ```
-Open your browser at http://localhost:3000 to view the app.
+Start the development server:
 
+```bash
+npm run dev
+```
+
+Open your browser at http://localhost:3000 to view the app.
