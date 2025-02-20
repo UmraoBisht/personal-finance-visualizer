@@ -64,6 +64,7 @@ A web application for tracking personal finances. Manage your transactions, view
 
 **Running the Project**
     Start the development server:
+    
     ```bash
         npm run dev
     ```
