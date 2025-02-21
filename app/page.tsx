@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { DashboardSummary } from "@/components/DashboardSummary";
 import { MonthlyExpensesChart } from "@/components/MonthlyExpensesChart";
@@ -9,7 +9,7 @@ import { BudgetComparisonChart } from "@/components/BudgetComparisonChart";
 import { SpendingInsights } from "@/components/SpendingInsights";
 import { BudgetSettings } from "@/components/BudgetSettings";
 import { COLORS } from "@/lib/constants";
-import { JSX, useState } from "react";
+import { JSX, useState, useEffect } from "react";
 
 // Types
 interface TransactionFormValues {
@@ -19,7 +19,8 @@ interface TransactionFormValues {
   category: string;
 }
 
-interface Transaction {
+export interface Transaction {
+  id: string;
   description: string;
   amount: number;
   date: string;
@@ -36,7 +37,7 @@ export default function PersonalFinanceVisualizer(): JSX.Element {
     category: "Food",
   });
   const [error, setError] = useState<string>("");
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [budgets, setBudgets] = useState<Record<string, number>>({
     Food: 500,
     Transport: 200,
@@ -46,41 +47,80 @@ export default function PersonalFinanceVisualizer(): JSX.Element {
     Other: 150,
   });
 
+  // Fetch transactions from the database on mount
+  useEffect(() => {
+    fetch("/api/transactions")
+      .then((res) => res.json())
+      .then((data) => setTransactions(data))
+      .catch((err) => console.error("Failed to fetch transactions", err));
+  }, []);
+
   // Handle add/update transaction
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.description || !form.amount || !form.date || !form.category) {
       setError("All fields are required.");
       return;
     }
-    const newTransaction: Transaction = { ...form, amount: parseFloat(form.amount) };
-    if (editingIndex !== null) {
-      const updatedTransactions = [...transactions];
-      updatedTransactions[editingIndex] = newTransaction;
+    try {
+      let response;
+      if (editingId) {
+        // Update transaction via PUT request
+        response = await fetch(`/api/transactions/${editingId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+      } else {
+        // Create a new transaction via POST request
+        response = await fetch("/api/transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+      }
+      const savedTransaction = await response.json();
+      if (!response.ok) {
+        setError(savedTransaction.error || "Error saving transaction");
+        return;
+      }
+      // Update local state
+      const updatedTransactions = editingId
+        ? transactions.map((t) => (t.id === editingId ? savedTransaction : t))
+        : [...transactions, savedTransaction];
       setTransactions(updatedTransactions);
-      setEditingIndex(null);
-    } else {
-      setTransactions([...transactions, newTransaction]);
-    }
-    setForm({ description: "", amount: "", date: "", category: "Food" });
-    setError("");
-  };
-
-  const handleEdit = (index: number) => {
-    const t = transactions[index];
-    setForm({
-      description: t.description,
-      amount: t.amount.toString(),
-      date: t.date,
-      category: t.category,
-    });
-    setEditingIndex(index);
-  };
-
-  const handleDelete = (index: number) => {
-    setTransactions(transactions.filter((_, i) => i !== index));
-    if (editingIndex === index) {
-      setEditingIndex(null);
       setForm({ description: "", amount: "", date: "", category: "Food" });
+      setEditingId(null);
+      setError("");
+    } catch (err) {
+      setError("An error occurred while saving the transaction.");
+    }
+  };
+
+  const handleEdit = (transaction: Transaction) => {
+    setForm({
+      description: transaction.description,
+      amount: transaction.amount.toString(),
+      // Convert to ISO string and split at the 'T' to extract the date part
+      date: new Date(transaction.date).toISOString().split("T")[0],
+      category: transaction.category,
+    });
+    setEditingId(transaction.id);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/transactions/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setTransactions(transactions.filter((t) => t.id !== id));
+        if (editingId === id) {
+          setEditingId(null);
+          setForm({ description: "", amount: "", date: "", category: "Food" });
+        }
+      } else {
+        console.error("Failed to delete transaction");
+      }
+    } catch (err) {
+      console.error("Error deleting transaction", err);
     }
   };
 
@@ -92,7 +132,9 @@ export default function PersonalFinanceVisualizer(): JSX.Element {
   }, {});
   const monthlyExpensesData = Object.entries(
     transactions.reduce<Record<string, number>>((acc, t) => {
-      const month = new Date(t.date).toLocaleString("default", { month: "short" });
+      // Format month (e.g., "Aug 2023") using toLocaleDateString
+      const date = new Date(t.date);
+      const month = date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
       acc[month] = (acc[month] || 0) + t.amount;
       return acc;
     }, {})
@@ -119,10 +161,10 @@ export default function PersonalFinanceVisualizer(): JSX.Element {
         onFormChange={setForm}
         onSubmit={handleSubmit}
         onCancel={() => {
-          setEditingIndex(null);
+          setEditingId(null);
           setForm({ description: "", amount: "", date: "", category: "Food" });
         }}
-        isEditing={editingIndex !== null}
+        isEditing={editingId !== null}
         error={error}
       />
       <BudgetSettings budgets={budgets} onBudgetChange={setBudgets} />
@@ -131,11 +173,19 @@ export default function PersonalFinanceVisualizer(): JSX.Element {
         categoryExpenses={categoryExpenses}
         recentTransactions={mostRecentTransactions}
       />
-      <TransactionList transactions={transactions} onEdit={handleEdit} onDelete={handleDelete} />
+      <TransactionList
+        transactions={transactions}
+        onEdit={handleEdit}
+        onDelete={(id) => handleDelete(id)}
+      />
       <MonthlyExpensesChart data={monthlyExpensesData} />
       <CategoryPieChart data={categoryExpensesData} />
       <BudgetComparisonChart data={budgetComparisonData} />
-      <SpendingInsights insights={overBudgetCategories} budgets={budgets} categoryExpenses={categoryExpenses} />
+      <SpendingInsights
+        insights={overBudgetCategories}
+        budgets={budgets}
+        categoryExpenses={categoryExpenses}
+      />
     </div>
   );
 }

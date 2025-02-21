@@ -19,6 +19,16 @@ export function DashboardSummary({
   categoryExpenses,
   recentTransactions,
 }: DashboardSummaryProps) {
+  // Helper function to format dates for display
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
       {/* Total Expenses Card */}
@@ -66,7 +76,7 @@ export function DashboardSummary({
             {recentTransactions.length > 0 ? (
               recentTransactions.map((t, index) => (
                 <li key={index} className="flex justify-between">
-                  <span>{t.date} - {t.description}</span>
+                  <span>{formatDate(t.date)} - {t.description}</span>
                   <span className="font-semibold">${t.amount.toFixed(2)}</span>
                 </li>
               ))
