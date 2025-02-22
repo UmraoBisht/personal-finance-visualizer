@@ -31,10 +31,13 @@ export async function GET() {
     }
 
     // Convert retrieved array into an object for easier merging
-    const budgetMap = budgets.reduce((acc, { category, amount }) => {
-      acc[category] = amount;
-      return acc;
-    }, {} as Record<string, number>);
+    const budgetMap = budgets.reduce(
+      (acc: Record<string, number>, { category, amount }) => {
+        acc[category] = amount;
+        return acc;
+      },
+      {}
+    );    
 
     // For any missing category, fall back to the default value
     const finalBudgets = { ...defaultBudgets, ...budgetMap };
