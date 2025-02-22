@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { categories } from "@/lib/constants";
 
 // Types
 interface TransactionFormValues {
@@ -19,8 +20,6 @@ interface TransactionFormProps {
     error: string;
 }
 
-// Constants
-const categories = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Other"];
 
 export function TransactionForm({
     form,
@@ -83,7 +82,7 @@ export function TransactionForm({
                         <Button
                             onClick={onCancel}
                             variant="outline"
-                            className="border border-white text-white font-bold px-6 py-3 rounded-md hover:bg-white hover:text-green-700 transition-colors"
+                            className="border border-white text-green-700 font-bold px-6 py-3 rounded-md hover:bg-white hover:text-green-700 transition-colors"
                         >
                             Cancel
                         </Button>

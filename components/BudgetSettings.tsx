@@ -3,18 +3,37 @@
 import { useState, ChangeEvent, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { categories } from "@/lib/constants";
 
 interface BudgetSettingsProps {
     budgets: Record<string, number>;
     onBudgetChange: (budgets: Record<string, number>) => void;
 }
 
-const categories = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Other"];
+
 
 export function BudgetSettings({ budgets, onBudgetChange }: BudgetSettingsProps) {
     const [localBudgets, setLocalBudgets] = useState<Record<string, number>>(budgets);
 
-    // Update local state if the parent budgets change
+    // Fetch budgets from the database when the component mounts
+    useEffect(() => {
+        async function fetchBudgets() {
+            try {
+                const res = await fetch("/api/budgets");
+                if (!res.ok) {
+                    throw new Error("Failed to fetch budgets");
+                }
+                const data: Record<string, number> = await res.json();
+                setLocalBudgets(data);
+                onBudgetChange(data);
+            } catch (error) {
+                console.error("Error fetching budgets:", error);
+            }
+        }
+        fetchBudgets();
+    }, [onBudgetChange]);
+
+    // Update local state if the parent's budgets change (for example, after an update)
     useEffect(() => {
         setLocalBudgets(budgets);
     }, [budgets]);
@@ -39,6 +58,7 @@ export function BudgetSettings({ budgets, onBudgetChange }: BudgetSettingsProps)
             }
             const data = await res.json();
             console.log(data.message);
+            // Update parent's state so changes propagate to other components
             onBudgetChange(localBudgets);
         } catch (error) {
             console.error("Error saving budgets:", error);

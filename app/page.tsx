@@ -5,11 +5,11 @@ import { MonthlyExpensesChart } from "@/components/MonthlyExpensesChart";
 import { TransactionForm } from "@/components/TransactionForm";
 import { TransactionList } from "@/components/TransactionList";
 import { CategoryPieChart } from "@/components/CategoryPieChart";
-import { BudgetComparisonChart } from "@/components/BudgetComparisonChart";
 import { SpendingInsights } from "@/components/SpendingInsights";
 import { BudgetSettings } from "@/components/BudgetSettings";
 import { COLORS } from "@/lib/constants";
 import { JSX, useState, useEffect } from "react";
+import BudgetComparisonContainer from "@/components/BudgetComparisonContainer";
 
 // Types
 interface TransactionFormValues {
@@ -100,7 +100,7 @@ export default function PersonalFinanceVisualizer(): JSX.Element {
     setForm({
       description: transaction.description,
       amount: transaction.amount.toString(),
-      // Convert to ISO string and split at the 'T' to extract the date part
+      // Format date as YYYY-MM-DD for input type="date"
       date: new Date(transaction.date).toISOString().split("T")[0],
       category: transaction.category,
     });
@@ -132,7 +132,6 @@ export default function PersonalFinanceVisualizer(): JSX.Element {
   }, {});
   const monthlyExpensesData = Object.entries(
     transactions.reduce<Record<string, number>>((acc, t) => {
-      // Format month (e.g., "Aug 2023") using toLocaleDateString
       const date = new Date(t.date);
       const month = date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
       acc[month] = (acc[month] || 0) + t.amount;
@@ -143,11 +142,6 @@ export default function PersonalFinanceVisualizer(): JSX.Element {
     category,
     total,
     color: COLORS[index % COLORS.length],
-  }));
-  const budgetComparisonData = Object.keys(budgets).map((category) => ({
-    category,
-    budget: budgets[category],
-    actual: categoryExpenses[category] || 0,
   }));
   const overBudgetCategories = Object.keys(budgets).filter(
     (cat) => (categoryExpenses[cat] || 0) > budgets[cat]
@@ -180,7 +174,8 @@ export default function PersonalFinanceVisualizer(): JSX.Element {
       />
       <MonthlyExpensesChart data={monthlyExpensesData} />
       <CategoryPieChart data={categoryExpensesData} />
-      <BudgetComparisonChart data={budgetComparisonData} />
+      {/* Pass both budgets and transactions to BudgetComparisonContainer */}
+      <BudgetComparisonContainer budgets={budgets} transactions={transactions} />
       <SpendingInsights
         insights={overBudgetCategories}
         budgets={budgets}
